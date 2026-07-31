@@ -15,7 +15,11 @@ const en = read('../../src/locales/lang/en-US.js')
 const copilotOverrides = read('../../src/locales/copilot-overrides.js')
 
 test('stream completion cancels the reader and releases the sending state', () => {
-  assert.match(copilot, /handleStreamEvent\(part, assistantMsg\) === 'done'/)
+  assert.match(copilot, /const eventName = this\.handleStreamEvent\(part, assistantMsg\)[\s\S]*eventName === 'done'/)
+  assert.match(copilot, /eventName === 'replace'[\s\S]*assistantMsg\.content = payload\.text/)
+  assert.match(copilot, /if \(!streamComplete\) throw new Error\(this\.text\.streamIncomplete\)/)
+  assert.match(copilot, /streamError\.streamAccepted \|\| streamError\.streamHasContent[\s\S]*streamWarning/)
+  assert.match(copilot, /eventName === 'warning'[\s\S]*outputLimit/)
   assert.match(copilot, /await reader\.cancel\(\)/)
   assert.match(copilot, /await this\.sendMessageStream[\s\S]*?this\.sending = false/)
 })

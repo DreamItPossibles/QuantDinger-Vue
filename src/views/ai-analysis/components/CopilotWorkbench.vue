@@ -105,6 +105,10 @@
                 @go-backtest="handleReportGoBacktest"
               />
             </div>
+            <div v-if="msg.streamWarning" class="stream-warning">
+              <a-icon type="warning" />
+              <span>{{ msg.streamWarning }}</span>
+            </div>
             <div v-if="msg.meta" class="message-meta">{{ msg.meta }}</div>
             <div v-if="agentUsageItems(msg).length" class="agent-usage">
               <span class="agent-usage-title"><a-icon type="apartment" /> {{ text.usedThisTurn }}</span>
@@ -721,6 +725,9 @@ export default {
         strategyGenerated: t('strategyGenerated', 'Strategy draft generated'),
         openTargetPage: t('openTargetPage', 'Open target page'),
         chatUnavailable: t('chatUnavailable', 'Chat API is not connected. Showing local fallback response first.'),
+        streamInterrupted: t('streamInterrupted', this.isZh ? '连接中断，已保留当前内容，请重试。' : 'The connection was interrupted. The current response was kept; please retry.'),
+        streamIncomplete: t('streamIncomplete', this.isZh ? '响应未正常结束，请重试。' : 'The response did not finish correctly. Please retry.'),
+        outputLimit: t('outputLimit', this.isZh ? '回答已达到输出上限，当前内容可能不完整。' : 'The response reached the output limit and may be incomplete.'),
         thinking: t('thinking', 'Thinking...'),
         selectSymbolFirst: t('selectSymbolFirst', 'Choose a symbol to analyze before running this tool.'),
         uploadImage: t('uploadImage', 'Upload image'),
@@ -3347,7 +3354,20 @@ export default {
           this.sending = false
           this.scrollToBottom()
           return
-        } catch (_) {
+        } catch (streamError) {
+          if (streamError && (streamError.streamAccepted || streamError.streamHasContent)) {
+            const hasContent = Boolean(String(assistantMsg.content || '').trim()) && !assistantMsg.isThinking
+            assistantMsg.isThinking = false
+            if (hasContent) {
+              assistantMsg.streamWarning = this.text.streamInterrupted
+              this.$message.warning(this.text.streamInterrupted)
+            } else {
+              assistantMsg.content = streamError.message || this.text.chatUnavailable
+            }
+            this.sending = false
+            this.scrollToBottom()
+            return
+          }
           assistantMsg.content = this.thinkingText
           assistantMsg.isThinking = true
         }
@@ -3553,32 +3573,54 @@ export default {
       const decoder = new TextDecoder('utf-8')
       let buffer = ''
       let streamComplete = false
-      while (!streamComplete) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split(/\r?\n\r?\n/)
-        buffer = parts.pop() || ''
-        for (const part of parts) {
-          if (this.handleStreamEvent(part, assistantMsg) === 'done') {
-            streamComplete = true
+      let streamAccepted = false
+      try {
+        while (!streamComplete) {
+          const { value, done } = await reader.read()
+          if (done) {
+            buffer += decoder.decode()
             break
           }
+          buffer += decoder.decode(value, { stream: true })
+          const parts = buffer.split(/\r?\n\r?\n/)
+          buffer = parts.pop() || ''
+          for (const part of parts) {
+            const eventName = this.handleStreamEvent(part, assistantMsg)
+            if (eventName === 'accepted' || eventName === 'meta') streamAccepted = true
+            if (eventName === 'done') {
+              streamComplete = true
+              break
+            }
+          }
+          this.scrollToBottom()
+          if (streamComplete) {
+            try {
+              await reader.cancel()
+            } catch (_) {}
+          }
         }
-        this.scrollToBottom()
-        if (streamComplete) {
-          try {
-            await reader.cancel()
-          } catch (_) {}
+        if (!streamComplete && buffer.trim()) {
+          const eventName = this.handleStreamEvent(buffer, assistantMsg)
+          if (eventName === 'accepted' || eventName === 'meta') streamAccepted = true
+          streamComplete = eventName === 'done'
         }
+        if (!streamComplete) throw new Error(this.text.streamIncomplete)
+        if (assistantMsg.isThinking) {
+          assistantMsg.content = ''
+          assistantMsg.isThinking = false
+        }
+        if (!assistantMsg.content) throw new Error('Empty stream response')
+        this.loadSessions()
+      } catch (error) {
+        try {
+          await reader.cancel()
+        } catch (_) {}
+        if (error && typeof error === 'object') {
+          error.streamAccepted = streamAccepted
+          error.streamHasContent = Boolean(String(assistantMsg.content || '').trim()) && !assistantMsg.isThinking
+        }
+        throw error
       }
-      if (!streamComplete && buffer.trim()) this.handleStreamEvent(buffer, assistantMsg)
-      if (assistantMsg.isThinking) {
-        assistantMsg.content = ''
-        assistantMsg.isThinking = false
-      }
-      if (!assistantMsg.content) throw new Error('Empty stream response')
-      this.loadSessions()
     },
     handleStreamEvent (rawEvent, assistantMsg) {
       const lines = String(rawEvent || '').split(/\r?\n/)
@@ -3589,13 +3631,23 @@ export default {
         .join('\n')
       if (!data) return eventName
       const payload = JSON.parse(data)
-      if (eventName === 'meta') {
+      if (eventName === 'accepted') {
+        this.sessionId = payload.session_id || this.sessionId
+      } else if (eventName === 'meta') {
         this.sessionId = payload.session_id || this.sessionId
         assistantMsg.meta = payload.intent || ''
         this.setAgentUsageActions(assistantMsg, payload.actions, payload.agent_usage)
       } else if (eventName === 'delta') {
         if (payload.text) this.clearThinkingMessage(assistantMsg)
         assistantMsg.content += payload.text || ''
+      } else if (eventName === 'replace') {
+        if (payload.text) this.clearThinkingMessage(assistantMsg)
+        assistantMsg.content = payload.text || assistantMsg.content
+        assistantMsg.streamWarning = ''
+      } else if (eventName === 'warning') {
+        assistantMsg.streamWarning = payload.code === 'output_limit'
+          ? this.text.outputLimit
+          : (payload.msg || this.text.streamIncomplete)
       } else if (eventName === 'done') {
         this.sessionId = payload.session_id || this.sessionId
         if (payload.message_id) this.$set ? this.$set(assistantMsg, 'id', payload.message_id) : (assistantMsg.id = payload.message_id)
@@ -4967,6 +5019,20 @@ export default {
   margin-top: 8px;
   color: var(--qd-text-subtle);
   font-size: 12px;
+}
+
+.stream-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 7px;
+  color: #d99a00;
+  background: rgba(251, 191, 36, 0.08);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .agent-usage {
