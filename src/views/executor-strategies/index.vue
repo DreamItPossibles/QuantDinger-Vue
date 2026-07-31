@@ -97,6 +97,18 @@
             show-icon
             :message="t('executorStrategies.dcaSpotLongOnly')" />
 
+          <div class="trigger-contract-card">
+            <span class="trigger-contract-card__icon"><a-icon type="thunderbolt" /></span>
+            <div>
+              <strong>{{ triggerModeTitle }}</strong>
+              <p>{{ triggerModeDescription }}</p>
+              <div class="trigger-contract-card__tags">
+                <a-tag color="blue">{{ t('executorStrategies.trigger.riskRealtime') }}</a-tag>
+                <a-tag color="green">{{ t('executorStrategies.trigger.fillReconciled') }}</a-tag>
+              </div>
+            </div>
+          </div>
+
           <div v-if="!embedded" class="field-block">
             <label>{{ t('executorStrategies.executionMode') }}</label>
             <a-radio-group v-model="form.execution_mode" class="compact-segmented compact-segmented--auto" button-style="solid">
@@ -139,7 +151,25 @@
           <div class="section-title">{{ t('executorStrategies.section.capitalRisk') }}</div>
           <div class="field-grid">
             <div class="field-block">
-              <label>{{ t(form.executor_type === 'grid' ? 'executorStrategies.gridPortfolioTakeProfitPct' : (supportsTrailingTakeProfit ? 'executorStrategies.fixedTakeProfitPct' : 'executorStrategies.takeProfitPct')) }}</label>
+              <label>{{ t('executorStrategies.initialCapital') }}</label>
+              <a-input-number
+                v-model="form.initial_capital"
+                :min="10"
+                :max="1000000"
+                :step="100"
+                :precision="2"
+                style="width: 100%" />
+              <small class="field-hint">{{ t('executorStrategies.initialCapitalHint') }}</small>
+            </div>
+          </div>
+
+          <div v-if="supportsTrailingTakeProfit" class="risk-scope-label">
+            {{ t('executorStrategies.cycleRiskTitle') }}
+            <small>{{ t('executorStrategies.cycleRiskHint') }}</small>
+          </div>
+          <div v-if="supportsTrailingTakeProfit" class="field-grid">
+            <div class="field-block">
+              <label>{{ t('executorStrategies.fixedTakeProfitPct') }}</label>
               <a-input-number
                 v-model="takeProfitPctDisplay"
                 :min="0"
@@ -152,12 +182,9 @@
               <small v-if="supportsTrailingTakeProfit" class="field-hint">
                 {{ t(form.trailing_take_profit_enabled ? 'executorStrategies.fixedTakeProfitDisabledHint' : 'executorStrategies.fixedTakeProfitHint') }}
               </small>
-              <small v-else-if="form.executor_type === 'grid'" class="field-hint">
-                {{ t('executorStrategies.gridPortfolioTakeProfitHint') }}
-              </small>
             </div>
             <div class="field-block">
-              <label>{{ t(form.executor_type === 'grid' ? 'executorStrategies.gridPortfolioStopLossPct' : 'executorStrategies.hardStopPct') }}</label>
+              <label>{{ t('executorStrategies.hardStopPct') }}</label>
               <a-input-number
                 v-model="hardStopPctDisplay"
                 :min="0"
@@ -201,6 +228,70 @@
                   style="width: 100%"
                   @change="value => setRatio('trailing_callback_pct', value)" />
                 <small class="field-hint">{{ t('executorStrategies.trailingCallbackHint') }}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="trailing-profit-card equity-risk-card">
+            <div class="trailing-profit-card__header">
+              <div>
+                <strong>{{ t('executorStrategies.equityRiskTitle') }}</strong>
+                <small>{{ t('executorStrategies.equityRiskHint') }}</small>
+              </div>
+            </div>
+            <div class="field-grid">
+              <div class="field-block">
+                <label>{{ t('executorStrategies.equityTakeProfitPct') }}</label>
+                <a-input-number
+                  v-model="equityTakeProfitPctDisplay"
+                  :min="0"
+                  :max="100"
+                  :step="0.5"
+                  :precision="2"
+                  style="width: 100%"
+                  @change="value => setRatio('equity_take_profit_pct', value)" />
+              </div>
+              <div class="field-block">
+                <label>{{ t('executorStrategies.equityStopLossPct') }}</label>
+                <a-input-number
+                  v-model="equityStopLossPctDisplay"
+                  :min="0"
+                  :max="100"
+                  :step="0.5"
+                  :precision="2"
+                  style="width: 100%"
+                  @change="value => setRatio('equity_stop_loss_pct', value)" />
+              </div>
+            </div>
+            <div class="trailing-profit-card__header equity-trailing-toggle">
+              <div>
+                <strong>{{ t('executorStrategies.equityTrailingTitle') }}</strong>
+                <small>{{ t('executorStrategies.equityTrailingHint') }}</small>
+              </div>
+              <a-switch v-model="form.equity_trailing_enabled" />
+            </div>
+            <div v-if="form.equity_trailing_enabled" class="field-grid">
+              <div class="field-block">
+                <label>{{ t('executorStrategies.equityTrailingActivationPct') }}</label>
+                <a-input-number
+                  v-model="equityTrailingActivationPctDisplay"
+                  :min="0.01"
+                  :max="100"
+                  :step="0.5"
+                  :precision="2"
+                  style="width: 100%"
+                  @change="value => setRatio('equity_trailing_activation_pct', value)" />
+              </div>
+              <div class="field-block">
+                <label>{{ t('executorStrategies.equityTrailingCallbackPct') }}</label>
+                <a-input-number
+                  v-model="equityTrailingCallbackPctDisplay"
+                  :min="0.01"
+                  :max="100"
+                  :step="0.5"
+                  :precision="2"
+                  style="width: 100%"
+                  @change="value => setRatio('equity_trailing_callback_pct', value)" />
               </div>
             </div>
           </div>
@@ -735,6 +826,12 @@ export default {
     isMartingale () {
       return ['martingale', 'layered_martingale'].includes(this.form.executor_type)
     },
+    triggerModeTitle () {
+      return this.t(`executorStrategies.trigger.${this.form.executor_type}.title`)
+    },
+    triggerModeDescription () {
+      return this.t(`executorStrategies.trigger.${this.form.executor_type}.description`)
+    },
     summary () {
       return (this.preview && this.preview.summary) || {}
     },
@@ -814,6 +911,8 @@ export default {
     validationIssues () {
       const issues = []
       if (!String(this.form.symbol || '').trim()) issues.push('symbol')
+      const initialCapital = Number(this.form.initial_capital || 0)
+      if (initialCapital < 10 || initialCapital > 1000000) issues.push('initialCapital')
       if (this.form.executor_type === 'grid') {
         const start = Number(this.form.start_price || 0)
         const end = Number(this.form.end_price || 0)
@@ -835,6 +934,11 @@ export default {
         const activation = Number(this.form.trailing_activation_pct || 0)
         const callback = Number(this.form.trailing_callback_pct || 0)
         if (activation <= 0 || callback <= 0 || callback >= activation) issues.push('trailingTakeProfit')
+      }
+      if (this.form.equity_trailing_enabled) {
+        const activation = Number(this.form.equity_trailing_activation_pct || 0)
+        const callback = Number(this.form.equity_trailing_callback_pct || 0)
+        if (activation <= 0 || callback <= 0 || callback >= activation) issues.push('equityTrailingTakeProfit')
       }
       return issues
     },
@@ -861,6 +965,22 @@ export default {
     trailingCallbackPctDisplay: {
       get () { return Number(this.form.trailing_callback_pct || 0) * 100 },
       set (value) { this.setRatio('trailing_callback_pct', value) }
+    },
+    equityTakeProfitPctDisplay: {
+      get () { return Number(this.form.equity_take_profit_pct || 0) * 100 },
+      set (value) { this.setRatio('equity_take_profit_pct', value) }
+    },
+    equityStopLossPctDisplay: {
+      get () { return Number(this.form.equity_stop_loss_pct || 0) * 100 },
+      set (value) { this.setRatio('equity_stop_loss_pct', value) }
+    },
+    equityTrailingActivationPctDisplay: {
+      get () { return Number(this.form.equity_trailing_activation_pct || 0) * 100 },
+      set (value) { this.setRatio('equity_trailing_activation_pct', value) }
+    },
+    equityTrailingCallbackPctDisplay: {
+      get () { return Number(this.form.equity_trailing_callback_pct || 0) * 100 },
+      set (value) { this.setRatio('equity_trailing_callback_pct', value) }
     },
     dcaTotalBudgetPctDisplay: {
       get () { return Number(this.form.dca_total_budget_pct || 0) * 100 },
@@ -966,6 +1086,7 @@ export default {
         side: 'long',
         market_type: 'swap',
         execution_mode: 'signal',
+        initial_capital: 1000,
         dynamic_anchor: true,
         start_price: 0.98,
         end_price: 1.02,
@@ -1001,6 +1122,11 @@ export default {
         trailing_activation_pct: 0.006,
         trailing_callback_pct: 0.002,
         hard_stop_pct: 0.12,
+        equity_take_profit_pct: 0.10,
+        equity_stop_loss_pct: 0.06,
+        equity_trailing_enabled: true,
+        equity_trailing_activation_pct: 0.05,
+        equity_trailing_callback_pct: 0.03,
         restart_after_stop: false,
         final_level_uses_remaining_budget: true,
         max_entry_drift_pct: 0.03
@@ -1115,7 +1241,6 @@ export default {
         templateConfig.market_type = 'spot'
         templateConfig.timeframe = '1H'
       }
-      delete templateConfig.initial_capital
       delete templateConfig.leverage
       return {
         ...templateConfig,
@@ -1141,7 +1266,7 @@ export default {
     },
     async createStrategy () {
       if (!this.canCreate) {
-        this.$message.warning(this.t('trading-assistant.noCredentialForLive.title'))
+        this.$message.warning(this.primaryValidationText)
         return
       }
       this.creating = true
@@ -1493,6 +1618,47 @@ export default {
   line-height: 1.45;
 }
 
+.risk-scope-label {
+  margin: 6px 0;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.risk-scope-label small {
+  display: block;
+  margin-top: 2px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.trigger-contract-card {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 14px;
+  padding: 12px;
+  border: 1px solid #bae0ff;
+  border-radius: 10px;
+  background: #f0f8ff;
+}
+
+.trigger-contract-card__icon {
+  display: inline-flex;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #1677ff;
+  background: #e6f4ff;
+}
+
+.trigger-contract-card strong { color: #1f2937; font-size: 13px; }
+.trigger-contract-card p { margin: 4px 0 8px; color: #667085; font-size: 11px; line-height: 1.5; }
+.trigger-contract-card__tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
 .trailing-profit-card {
   margin: 4px 0 10px;
   padding: 10px;
@@ -1522,6 +1688,17 @@ export default {
 
 .trailing-profit-card .field-grid {
   margin-top: 10px;
+}
+
+.equity-risk-card {
+  border-color: #91caff;
+  background: #e6f4ff;
+}
+
+.equity-trailing-toggle {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(22, 119, 255, 0.2);
 }
 
 .martingale-budget-notice {
@@ -1820,6 +1997,27 @@ export default {
 .theme-dark .trailing-profit-card {
   border-color: #274916;
   background: #15230f;
+}
+
+.theme-dark .equity-risk-card {
+  border-color: #164c7e;
+  background: #102a43;
+}
+
+.theme-dark .trigger-contract-card {
+  border-color: #164c7e;
+  background: #102a43;
+}
+
+.theme-dark .trigger-contract-card strong { color: #f3f4f6; }
+.theme-dark .trigger-contract-card p { color: #9aa4b2; }
+
+.theme-dark .risk-scope-label {
+  color: #f3f4f6;
+}
+
+.theme-dark .risk-scope-label small {
+  color: #9aa4b2;
 }
 
 .theme-dark .restart-after-stop-card {
