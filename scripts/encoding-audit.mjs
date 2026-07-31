@@ -40,6 +40,10 @@ const ignoredDirs = new Set([
   '.vite'
 ])
 
+const ignoredFiles = new Set([
+  '.DS_Store'
+])
+
 const mojibakePatterns = [
   /\uFFFD/u,
   /[\uE000-\uF8FF]/u,
@@ -48,6 +52,7 @@ const mojibakePatterns = [
 
 function shouldScan(filePath) {
   const name = basename(filePath)
+  if (ignoredFiles.has(name)) return false
   return textExtensions.has(extname(filePath)) || name.startsWith('.')
 }
 
