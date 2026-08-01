@@ -8,6 +8,12 @@
         show-icon
         :message="reconciliationMessage"
       />
+      <div v-if="executionMode === 'live'" class="ownership-toolbar">
+        <span>{{ $t('strategyCenter.positionOwnership.summary') }}</span>
+        <a-button size="small" icon="safety-certificate" @click="openOwnershipRepair">
+          {{ $t('strategyCenter.positionOwnership.openRepair') }}
+        </a-button>
+      </div>
       <div v-if="positions.length === 0 && !loading" class="empty-state strategy-tab-empty" :class="{ 'is-compact': compact }">
         <template v-if="compact">
           <a-icon type="inbox" />
@@ -82,11 +88,84 @@
         </template>
       </a-table>
     </div>
+
+    <a-modal
+      v-model="ownershipVisible"
+      :title="$t('strategyCenter.positionOwnership.title')"
+      :footer="null"
+      :width="920"
+      destroy-on-close
+    >
+      <a-alert
+        class="ownership-risk-alert"
+        type="warning"
+        show-icon
+        :message="$t('strategyCenter.positionOwnership.riskTitle')"
+        :description="$t('strategyCenter.positionOwnership.riskDescription')"
+      />
+      <a-table
+        :columns="ownershipColumns"
+        :data-source="ownershipRows"
+        :loading="ownershipLoading"
+        :pagination="false"
+        row-key="rowKey"
+        size="small"
+        :scroll="{ x: 860 }"
+      >
+        <template slot="ownershipSide" slot-scope="text, record">
+          <a-tag :color="record.side === 'long' ? 'green' : 'red'">
+            {{ record.side === 'long' ? $t('trading-assistant.table.long') : $t('trading-assistant.table.short') }}
+          </a-tag>
+        </template>
+        <template slot="ownershipQty" slot-scope="text">
+          {{ formatOwnershipQty(text) }}
+        </template>
+        <template slot="ownershipStatus" slot-scope="text, record">
+          <a-tag :color="record.status === 'ok' ? 'green' : 'orange'">
+            {{ record.status === 'ok' ? $t('strategyCenter.positionOwnership.normal') : $t('strategyCenter.positionOwnership.blocked') }}
+          </a-tag>
+        </template>
+        <template slot="ownershipMode" slot-scope="text, record">
+          {{ record.coexistence_mode === 'advanced' ? $t('strategyCenter.positionOwnership.advanced') : $t('strategyCenter.positionOwnership.strict') }}
+        </template>
+        <template slot="ownershipActions" slot-scope="text, record">
+          <a-popconfirm
+            v-if="record.coexistence_mode !== 'advanced' || Math.abs(Number(record.unknown_qty || 0)) > Number(record.tolerance || 0)"
+            :title="$t('strategyCenter.positionOwnership.protectConfirm')"
+            :ok-text="$t('strategyCenter.positionOwnership.protectManual')"
+            :cancel-text="$t('common.cancel')"
+            @confirm="repairOwnership(record, 'protect_manual')"
+          >
+            <a-button type="link" size="small" :loading="ownershipRepairKey === record.rowKey">
+              {{ $t('strategyCenter.positionOwnership.protectManual') }}
+            </a-button>
+          </a-popconfirm>
+          <a-popconfirm
+            v-else
+            :title="$t('strategyCenter.positionOwnership.strictConfirm')"
+            :ok-text="$t('strategyCenter.positionOwnership.useStrict')"
+            :cancel-text="$t('common.cancel')"
+            @confirm="repairOwnership(record, 'strict_mode')"
+          >
+            <a-button type="link" size="small" :loading="ownershipRepairKey === record.rowKey">
+              {{ $t('strategyCenter.positionOwnership.useStrict') }}
+            </a-button>
+          </a-popconfirm>
+          <a-button type="link" size="small" @click="repairOwnership(record, 'recheck')">
+            {{ $t('strategyCenter.positionOwnership.recheck') }}
+          </a-button>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
 <script>
-import { getStrategyPositions } from '@/api/strategy'
+import {
+  getStrategyPositionOwnership,
+  getStrategyPositions,
+  repairStrategyPositionOwnership
+} from '@/api/strategy'
 import { createVisibilityPolling } from '@/utils/visibilityPolling'
 
 export default {
@@ -129,6 +208,10 @@ export default {
         notes: [],
         account_positions: []
       },
+      ownershipVisible: false,
+      ownershipLoading: false,
+      ownershipRepairKey: '',
+      ownershipRows: [],
       pollingTimer: null,
       positionPoller: null
     }
@@ -267,6 +350,20 @@ export default {
         }
       ]
     },
+    ownershipColumns () {
+      const quantitySlot = { customRender: 'ownershipQty' }
+      return [
+        { title: this.$t('trading-assistant.table.symbol'), dataIndex: 'symbol', width: 118 },
+        { title: this.$t('trading-assistant.table.side'), dataIndex: 'side', width: 76, scopedSlots: { customRender: 'ownershipSide' } },
+        { title: this.$t('strategyCenter.positionOwnership.accountQty'), dataIndex: 'account_qty', width: 112, scopedSlots: quantitySlot },
+        { title: this.$t('strategyCenter.positionOwnership.strategyQty'), dataIndex: 'strategy_qty', width: 112, scopedSlots: quantitySlot },
+        { title: this.$t('strategyCenter.positionOwnership.protectedQty'), dataIndex: 'protected_qty', width: 112, scopedSlots: quantitySlot },
+        { title: this.$t('strategyCenter.positionOwnership.unknownQty'), dataIndex: 'unknown_qty', width: 112, scopedSlots: quantitySlot },
+        { title: this.$t('strategyCenter.positionOwnership.mode'), dataIndex: 'coexistence_mode', width: 90, scopedSlots: { customRender: 'ownershipMode' } },
+        { title: this.$t('strategyCenter.positionOwnership.status'), dataIndex: 'status', width: 90, scopedSlots: { customRender: 'ownershipStatus' } },
+        { title: this.$t('common.actions'), key: 'actions', fixed: 'right', width: 190, scopedSlots: { customRender: 'ownershipActions' } }
+      ]
+    },
     effectiveLeverage () {
       if (String(this.marketType || '').toLowerCase() === 'spot') return 1
       const parsed = parseFloat(this.leverage)
@@ -290,6 +387,49 @@ export default {
     this.stopPolling()
   },
   methods: {
+    async openOwnershipRepair () {
+      this.ownershipVisible = true
+      await this.loadOwnership()
+    },
+    async loadOwnership () {
+      if (!this.strategyId) return
+      this.ownershipLoading = true
+      try {
+        const res = await getStrategyPositionOwnership(this.strategyId)
+        const rows = res.code === 1 ? (res.data.items || []) : []
+        this.ownershipRows = rows.map(row => ({
+          ...row,
+          rowKey: `${row.symbol || ''}:${row.side || ''}`
+        }))
+      } catch (error) {
+        this.ownershipRows = []
+        this.$message.error(this.$t('strategyCenter.positionOwnership.loadFailed'))
+      } finally {
+        this.ownershipLoading = false
+      }
+    },
+    async repairOwnership (record, action) {
+      this.ownershipRepairKey = record.rowKey
+      try {
+        const res = await repairStrategyPositionOwnership({
+          id: this.strategyId,
+          symbol: record.symbol,
+          side: record.side,
+          action
+        })
+        if (res.code !== 1) throw new Error(res.msg || 'repair failed')
+        this.$message.success(this.$t('strategyCenter.positionOwnership.repairSuccess'))
+        await Promise.all([this.loadOwnership(), this.loadPositions()])
+      } catch (error) {
+        this.$message.error((error && error.message) || this.$t('strategyCenter.positionOwnership.repairFailed'))
+      } finally {
+        this.ownershipRepairKey = ''
+      }
+    },
+    formatOwnershipQty (value) {
+      const quantity = Number(value || 0)
+      return Number.isFinite(quantity) ? quantity.toFixed(8).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0'
+    },
     async loadPositions () {
       if (!this.strategyId) return
 
@@ -447,6 +587,25 @@ export default {
     border-radius: 6px;
   }
 
+  .ownership-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #64748b;
+    background: #f8fafc;
+  }
+
+  &.theme-dark .ownership-toolbar {
+    color: #aeb7c4;
+    border-color: #363c4e;
+    background: #20232b;
+  }
+
   ::v-deep .ant-table {
     font-size: 13px;
     color: #333;
@@ -556,5 +715,9 @@ export default {
 
     .position-leverage { color: #d9a928; }
   }
+}
+
+.ownership-risk-alert {
+  margin-bottom: 16px;
 }
 </style>

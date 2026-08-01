@@ -8,6 +8,8 @@ const api = {
   positions: '/api/strategies/positions',
   accountPositions: '/api/account/positions',
   accountSnapshot: '/api/account/snapshot',
+  positionOwnership: '/api/strategies/position-ownership',
+  positionOwnershipRepair: '/api/strategies/position-ownership/repair',
   equityCurve: '/api/strategies/equityCurve',
   notifications: '/api/strategies/notifications',
   unreadNotificationCount: '/api/strategies/notifications/unread-count',
@@ -258,6 +260,22 @@ export function getStrategyLogs (id, params = {}) {
     url: api.logs,
     method: 'get',
     params: { id, ...params }
+  })
+}
+
+export function getStrategyPositionOwnership (id) {
+  return request({
+    url: api.positionOwnership,
+    method: 'get',
+    params: { id }
+  })
+}
+
+export function repairStrategyPositionOwnership (data) {
+  return request({
+    url: api.positionOwnershipRepair,
+    method: 'post',
+    data
   })
 }
 
