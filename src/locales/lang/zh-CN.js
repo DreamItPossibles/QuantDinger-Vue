@@ -7552,7 +7552,7 @@ export default {
   "strategyCenter.positionOwnership.openRepair": "持仓归属与修复",
   "strategyCenter.positionOwnership.title": "持仓归属与修复",
   "strategyCenter.positionOwnership.riskTitle": "高级共存模式属于账本隔离，不是交易所物理隔离",
-  "strategyCenter.positionOwnership.riskDescription": "开启后，当前未分配数量会登记为用户保护仓位，策略平仓不会低于该保护基线。合约同方向仓位仍会在交易所合并均价、保证金和强平风险。",
+  "strategyCenter.positionOwnership.riskDescription": "Crypto 现货和合约均支持高级共存。开启后，当前未分配数量会登记为用户保护仓位，策略平仓不会低于该保护基线。现货同币种仍共享账户余额；合约同方向仓位仍会合并均价、保证金和强平风险。",
   "strategyCenter.positionOwnership.accountQty": "账户总仓",
   "strategyCenter.positionOwnership.strategyQty": "策略仓位",
   "strategyCenter.positionOwnership.protectedQty": "用户保护",

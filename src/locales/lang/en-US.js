@@ -7251,7 +7251,7 @@ export default {
   "strategyCenter.positionOwnership.openRepair": "Ownership & repair",
   "strategyCenter.positionOwnership.title": "Position ownership and repair",
   "strategyCenter.positionOwnership.riskTitle": "Advanced coexistence is ledger isolation, not physical exchange isolation",
-  "strategyCenter.positionOwnership.riskDescription": "The current unallocated quantity becomes protected manual inventory. Strategy exits cannot cross that floor. Same-side futures positions still share exchange entry price, margin, and liquidation risk.",
+  "strategyCenter.positionOwnership.riskDescription": "Advanced coexistence supports both Crypto spot and derivatives. Current unallocated quantity becomes protected manual inventory, and strategy exits cannot cross that floor. Spot inventory still shares the account balance; same-side derivatives still share exchange entry price, margin, and liquidation risk.",
   "strategyCenter.positionOwnership.accountQty": "Account total",
   "strategyCenter.positionOwnership.strategyQty": "Strategy",
   "strategyCenter.positionOwnership.protectedQty": "Protected",

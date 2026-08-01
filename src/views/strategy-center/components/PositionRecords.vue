@@ -130,7 +130,7 @@
         </template>
         <template slot="ownershipActions" slot-scope="text, record">
           <a-popconfirm
-            v-if="record.coexistence_mode !== 'advanced' || Math.abs(Number(record.unknown_qty || 0)) > Number(record.tolerance || 0)"
+            v-if="ownershipAdvancedAvailable && (record.coexistence_mode !== 'advanced' || Math.abs(Number(record.unknown_qty || 0)) > Number(record.tolerance || 0))"
             :title="$t('strategyCenter.positionOwnership.protectConfirm')"
             :ok-text="$t('strategyCenter.positionOwnership.protectManual')"
             :cancel-text="$t('common.cancel')"
@@ -141,7 +141,7 @@
             </a-button>
           </a-popconfirm>
           <a-popconfirm
-            v-else
+            v-else-if="record.coexistence_mode === 'advanced'"
             :title="$t('strategyCenter.positionOwnership.strictConfirm')"
             :ok-text="$t('strategyCenter.positionOwnership.useStrict')"
             :cancel-text="$t('common.cancel')"
@@ -211,6 +211,7 @@ export default {
       ownershipVisible: false,
       ownershipLoading: false,
       ownershipRepairKey: '',
+      ownershipAdvancedAvailable: false,
       ownershipRows: [],
       pollingTimer: null,
       positionPoller: null
@@ -396,12 +397,15 @@ export default {
       this.ownershipLoading = true
       try {
         const res = await getStrategyPositionOwnership(this.strategyId)
-        const rows = res.code === 1 ? (res.data.items || []) : []
+        const data = res.code === 1 ? (res.data || {}) : {}
+        const rows = data.items || []
+        this.ownershipAdvancedAvailable = Boolean(data.advanced_coexistence_available)
         this.ownershipRows = rows.map(row => ({
           ...row,
           rowKey: `${row.symbol || ''}:${row.side || ''}`
         }))
       } catch (error) {
+        this.ownershipAdvancedAvailable = false
         this.ownershipRows = []
         this.$message.error(this.$t('strategyCenter.positionOwnership.loadFailed'))
       } finally {
