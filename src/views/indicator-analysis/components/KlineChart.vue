@@ -1426,6 +1426,7 @@ const parseSignalValue = (value) => {
 
 const signalRenderMode = (signal, activeCount, dataLength) => {
   const rawMode = String(signal?.renderMode || signal?.mode || '').toLowerCase()
+  if (['event', 'events'].includes(rawMode)) return 'events'
   if (['point', 'points', 'marker', 'markers', 'raw'].includes(rawMode)) return 'points'
   if (['state', 'continuous', 'condition'].includes(rawMode)) return 'edge'
 
