@@ -485,11 +485,19 @@ export default {
     },
     health (strategy) { return strategy && strategy.runtime_health || {} },
     healthState (strategy) {
-      return String(this.health(strategy).health || (this.isRunning(strategy) ? 'unknown' : 'inactive')).toLowerCase()
+      const health = this.health(strategy)
+      if (health.position_drift_blocked || Number(health.position_drift_count || 0) > 0) return 'degraded'
+      return String(health.health || (this.isRunning(strategy) ? 'unknown' : 'inactive')).toLowerCase()
     },
     healthLabel (strategy) { return this.$t(`liveMonitor.${this.healthState(strategy)}`) },
     healthClass (strategy) { return `health-${this.healthState(strategy)}` },
-    needsAttention (strategy) { return ['degraded', 'stale', 'offline'].includes(this.healthState(strategy)) || Number(this.health(strategy).failed_orders || 0) > 0 },
+    needsAttention (strategy) {
+      const health = this.health(strategy)
+      return ['degraded', 'stale', 'offline'].includes(this.healthState(strategy)) ||
+        Number(health.failed_orders || 0) > 0 ||
+        Boolean(health.position_drift_blocked) ||
+        Number(health.position_drift_count || 0) > 0
+    },
     statusClass (strategy) { return this.needsAttention(strategy) ? 'warning' : (this.isRunning(strategy) ? 'running' : 'stopped') },
     statusLabel (strategy) { return this.needsAttention(strategy) ? this.healthLabel(strategy) : (this.isRunning(strategy) ? this.$t('systemOverview.running') : this.$t('systemOverview.stopped')) },
     strategyPnl (strategy) {
