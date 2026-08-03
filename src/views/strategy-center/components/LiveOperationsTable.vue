@@ -221,6 +221,12 @@
         </section>
 
         <a-tabs v-model="detailTab" class="runtime-tabs" :animated="false">
+          <a-tab-pane v-if="isGridStrategy" key="grid-orders" :tab="$t('strategyCenter.gridOrders.tab')">
+            <grid-resting-orders
+              v-if="detailTab === 'grid-orders'"
+              :strategy-id="Number(selectedStrategy.id)"
+            />
+          </a-tab-pane>
           <a-tab-pane key="overview" :tab="$t('strategyCenter.tabs.overview')">
             <section class="positions-panel panel-section overview-positions-panel">
               <div class="section-head">
@@ -283,6 +289,7 @@ import PositionRecords from './PositionRecords.vue'
 import TradingRecords from './TradingRecords.vue'
 import StrategyReviewReport from './StrategyReviewReport.vue'
 import StrategyLogs from './StrategyLogs.vue'
+import GridRestingOrders from './GridRestingOrders.vue'
 import { getExchangeDisplayName } from '@/utils/exchangeCredential'
 import {
   normalizeTimestampMilliseconds,
@@ -298,7 +305,7 @@ import {
 
 export default {
   name: 'LiveOperationsTable',
-  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs },
+  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs, GridRestingOrders },
   props: {
     strategies: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
@@ -328,6 +335,13 @@ export default {
       // Detail data is useful for richer configuration, but it may lag behind a
       // start or stop request and must not overwrite the refreshed list state.
       return base ? { ...(this.selectedDetail || {}), ...base } : null
+    },
+    isGridStrategy () {
+      const strategy = this.selectedStrategy || {}
+      const config = strategyTradingConfig(strategy)
+      const type = String(strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase()
+      const template = String(strategy.template_key || config.template_key || '').toLowerCase()
+      return type === 'grid' || template.includes('robot_v2_grid')
     },
     runningStrategies () {
       return this.strategies.filter(this.isRunning)
@@ -493,6 +507,7 @@ export default {
     healthClass (strategy) { return `health-${this.healthState(strategy)}` },
     needsAttention (strategy) {
       const health = this.health(strategy)
+      if (typeof health.needs_attention === 'boolean') return health.needs_attention
       return ['degraded', 'stale', 'offline'].includes(this.healthState(strategy)) ||
         Number(health.failed_orders || 0) > 0 ||
         Boolean(health.position_drift_blocked) ||

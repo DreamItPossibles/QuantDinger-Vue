@@ -81,6 +81,27 @@ const locale = {
   'accountRisk.grossLeverageExceeded': 'Account gross leverage limit exceeded.',
   'accountRisk.positionPriceMissing': 'A current position could not be valued, so the opening order was blocked.',
   'accountRisk.proposedPriceMissing': 'The opening order has no usable reference price, so it was blocked.'
+  , 'strategyCenter.gridOrders.tab': 'Exchange orders'
+  , 'strategyCenter.gridOrders.title': 'Exchange resting grid orders'
+  , 'strategyCenter.gridOrders.description': 'Orders are reconciled against the exchange; an exchange order ID is the placement proof.'
+  , 'strategyCenter.gridOrders.reconcile': 'Reconcile now'
+  , 'strategyCenter.gridOrders.syncFailed': 'Exchange reconciliation failed'
+  , 'strategyCenter.gridOrders.open': 'Tracked open orders'
+  , 'strategyCenter.gridOrders.verified': 'Verified on exchange'
+  , 'strategyCenter.gridOrders.unverified': 'Missing exchange ID'
+  , 'strategyCenter.gridOrders.lastSync': 'Last reconciliation'
+  , 'strategyCenter.gridOrders.cell': 'Cell'
+  , 'strategyCenter.gridOrders.purpose': 'Purpose'
+  , 'strategyCenter.gridOrders.side': 'Side'
+  , 'strategyCenter.gridOrders.price': 'Price'
+  , 'strategyCenter.gridOrders.quantity': 'Quantity'
+  , 'strategyCenter.gridOrders.filled': 'Filled'
+  , 'strategyCenter.gridOrders.status': 'Status'
+  , 'strategyCenter.gridOrders.exchangeOrderId': 'Exchange order ID'
+  , 'strategyCenter.gridOrders.updatedAt': 'Updated'
+  , 'strategyCenter.gridOrders.notVerified': 'Not verified'
+  , 'strategyCenter.gridOrders.empty': 'No exchange resting orders are visible'
+  , 'strategyCenter.gridOrders.emptyHint': 'A running grid should normally have resting entries. Reconcile and inspect strategy health before assuming it is active.'
 }
 
 const enUSFallback = locale
@@ -168,6 +189,27 @@ const zhCN = {
   'accountRisk.grossLeverageExceeded': '账户总杠杆超过限制。',
   'accountRisk.positionPriceMissing': '当前持仓缺少可用价格，已阻止新增开仓。',
   'accountRisk.proposedPriceMissing': '开仓订单缺少可用参考价格，已阻止提交。'
+  , 'strategyCenter.gridOrders.tab': '交易所挂单'
+  , 'strategyCenter.gridOrders.title': '交易所常驻网格挂单'
+  , 'strategyCenter.gridOrders.description': '挂单会与交易所回读核验；交易所订单号是挂单成功的凭证。'
+  , 'strategyCenter.gridOrders.reconcile': '立即核验'
+  , 'strategyCenter.gridOrders.syncFailed': '交易所挂单核验失败'
+  , 'strategyCenter.gridOrders.open': '跟踪中挂单'
+  , 'strategyCenter.gridOrders.verified': '交易所已确认'
+  , 'strategyCenter.gridOrders.unverified': '缺少交易所订单号'
+  , 'strategyCenter.gridOrders.lastSync': '最近核验'
+  , 'strategyCenter.gridOrders.cell': '网格'
+  , 'strategyCenter.gridOrders.purpose': '用途'
+  , 'strategyCenter.gridOrders.side': '方向'
+  , 'strategyCenter.gridOrders.price': '价格'
+  , 'strategyCenter.gridOrders.quantity': '数量'
+  , 'strategyCenter.gridOrders.filled': '已成交'
+  , 'strategyCenter.gridOrders.status': '状态'
+  , 'strategyCenter.gridOrders.exchangeOrderId': '交易所订单号'
+  , 'strategyCenter.gridOrders.updatedAt': '更新时间'
+  , 'strategyCenter.gridOrders.notVerified': '未核验'
+  , 'strategyCenter.gridOrders.empty': '没有查到交易所常驻挂单'
+  , 'strategyCenter.gridOrders.emptyHint': '运行中的网格通常应存在买入挂单；请先执行核验并检查运行健康，不要默认它正在正常挂单。'
 }
 
 const zhTW = {
