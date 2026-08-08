@@ -1472,13 +1472,13 @@ export default {
       if (!id) return false
       try {
         const res = await getStrategyBacktestHistory({
-          assetType: 'script',
-          assetId: id,
-          status: 'success',
-          limit: 1
+          sourceId: id,
+          limit: 20
         })
         const rows = Array.isArray(res && res.data) ? res.data : []
-        return res && res.code === 1 && rows.length > 0
+        if (!(res && res.code === 1) || !rows.length) return false
+        // Backend history rows carry a status field; only a successful run satisfies the gate.
+        return rows.some(row => String(row.status || '').toLowerCase() === 'success')
       } catch (_) {
         return false
       }
@@ -1817,11 +1817,25 @@ export default {
         await this.openSource(sourceId, { updateRoute: false })
         this.finishIndicatorConversion(sourceId)
         this.$message.success(this.text.indicatorConvertSuccess)
+        this.showAutoBacktestPreview(res)
       } catch (e) {
         this.indicatorConvertError = e.backendMessage || e.message || this.text.indicatorConvertFailed
       } finally {
         this.indicatorConvertLoading = false
       }
+    },
+    showAutoBacktestPreview (res) {
+      const data = (res && res.data) || {}
+      const ab = data.autoBacktest
+      if (!ab || !ab.status || ab.status === 'no_signals') return
+      const fmt = v => (v === null || v === undefined) ? '—' : (Number(v) * 100).toFixed(2) + '%'
+      const text = [
+        `${this.text.autoBacktestTitle || '自动回测预览'}`,
+        `收益 ${fmt(ab.totalReturn)} | 年化 ${fmt(ab.annualizedReturn)}`,
+        `Sharpe ${ab.sharpeRatio === null || ab.sharpeRatio === undefined ? '—' : Number(ab.sharpeRatio).toFixed(2)} | 回撤 ${fmt(ab.maxDrawdown)}`,
+        `盈亏比 ${ab.profitFactor === null || ab.profitFactor === undefined ? '—' : Number(ab.profitFactor).toFixed(2)} | ${(ab.totalTrades || 0)} 笔`
+      ]
+      this.$message.success(text.join('\n'), 5)
     },
     extractAiGeneratedCode (res) {
       if (!res || typeof res !== 'object') return ''
