@@ -304,6 +304,40 @@
           :message="text.indicatorConvertSelectFirst"
         />
 
+        <div class="indicator-convert-style-row">
+          <div class="indicator-convert-style-col">
+            <label class="field-label">{{ text.strategyStyleLabel }}</label>
+            <a-select
+              v-model="indicatorConvertStyle"
+              style="width: 100%"
+              :placeholder="text.strategyStyleDefault"
+              allow-clear
+            >
+              <a-select-option value="aggressive">{{ text.strategyStyleAggressive }}</a-select-option>
+              <a-select-option value="balanced">{{ text.strategyStyleBalanced }}</a-select-option>
+              <a-select-option value="conservative">{{ text.strategyStyleConservative }}</a-select-option>
+            </a-select>
+          </div>
+          <div class="indicator-convert-style-col">
+            <label class="field-label">{{ text.strategyThemeLabel }}</label>
+            <a-select
+              v-model="indicatorConvertTheme"
+              style="width: 100%"
+              :placeholder="text.strategyThemeDefault"
+              allow-clear
+            >
+              <a-select-option value="lowvol">{{ text.strategyThemeLowvol }}</a-select-option>
+              <a-select-option value="dividend">{{ text.strategyThemeDividend }}</a-select-option>
+              <a-select-option value="quality">{{ text.strategyThemeQuality }}</a-select-option>
+              <a-select-option value="momentum">{{ text.strategyThemeMomentum }}</a-select-option>
+              <a-select-option value="value">{{ text.strategyThemeValue }}</a-select-option>
+              <a-select-option value="multi_factor">{{ text.strategyThemeMultiFactor }}</a-select-option>
+              <a-select-option value="trend">{{ text.strategyThemeTrend }}</a-select-option>
+              <a-select-option value="reversal">{{ text.strategyThemeReversal }}</a-select-option>
+            </a-select>
+          </div>
+        </div>
+
         <label class="field-label field-label--spaced">{{ text.indicatorConvertInstruction }}</label>
         <a-textarea
           v-model="indicatorConvertInstruction"
@@ -539,6 +573,8 @@ export default {
       indicatorConvertContext: null,
       indicatorConvertInstruction: '',
       indicatorConvertError: '',
+      indicatorConvertStyle: '',
+      indicatorConvertTheme: '',
       runConfig: {
         market_category: 'Crypto',
         exchange_id: 'binance',
@@ -704,6 +740,21 @@ export default {
         'indicatorConvertHiddenBlocked',
         'indicatorConvertFailed',
         'indicatorConvertSuccess',
+        'strategyStyleLabel',
+        'strategyStyleDefault',
+        'strategyStyleAggressive',
+        'strategyStyleBalanced',
+        'strategyStyleConservative',
+        'strategyThemeLabel',
+        'strategyThemeDefault',
+        'strategyThemeLowvol',
+        'strategyThemeDividend',
+        'strategyThemeQuality',
+        'strategyThemeMomentum',
+        'strategyThemeValue',
+        'strategyThemeMultiFactor',
+        'strategyThemeTrend',
+        'strategyThemeReversal',
         'defaultIndicatorName',
         'noChangesToSave',
         'factorLibrary',
@@ -1748,7 +1799,9 @@ export default {
       this.indicatorConvertError = ''
       try {
         const res = await aiGenerateStrategy({
-          prompt: this.buildIndicatorConversionPrompt()
+          prompt: this.buildIndicatorConversionPrompt(),
+          strategy_style: this.indicatorConvertStyle || undefined,
+          strategy_theme: this.indicatorConvertTheme || undefined
         })
         const code = this.extractAiGeneratedCode(res)
         if (!code) throw new Error((res && res.msg) || this.text.indicatorConvertFailed)
@@ -2385,6 +2438,19 @@ export default {
     border: 1px solid rgba(239, 68, 68, 0.18);
     border-radius: 8px;
     background: rgba(239, 68, 68, 0.06);
+  }
+
+  .indicator-convert-style-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .indicator-convert-style-col {
+    flex: 1;
+  }
+
+  .indicator-convert-style-col .field-label {
+    margin-bottom: 4px;
   }
 
   .field-label {
