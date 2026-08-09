@@ -7156,6 +7156,7 @@ export default {
   "strategyIde.indicatorConvertHiddenBlocked": "Hidden-source indicators cannot be converted.",
   "strategyIde.indicatorConvertFailed": "Conversion failed",
   "strategyIde.indicatorConvertSuccess": "Strategy generated and opened",
+  "strategyIde.autoBacktestTitle": "Auto backtest preview",
   "strategyIde.defaultIndicatorName": "Selected indicator",
   "strategyIde.noChangesToSave": "No changes to save",
   "strategyIde.verifyHints.importLine": "Import check: line {count} uses unsupported import.",

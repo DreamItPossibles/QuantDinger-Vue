@@ -7461,6 +7461,7 @@ export default {
   "strategyIde.indicatorConvertHiddenBlocked": "隐藏源码指标不能转写。",
   "strategyIde.indicatorConvertFailed": "转写失败",
   "strategyIde.indicatorConvertSuccess": "策略已生成并打开",
+  "strategyIde.autoBacktestTitle": "自动回测预览",
   "strategyIde.defaultIndicatorName": "已选择指标",
   "strategyIde.noChangesToSave": "没有需要保存的改动",
   "strategyIde.verifyHints.importLine": "导入检查：第 {count} 行使用了不支持的 import。",

@@ -740,6 +740,7 @@ export default {
         'indicatorConvertHiddenBlocked',
         'indicatorConvertFailed',
         'indicatorConvertSuccess',
+        'autoBacktestTitle',
         'strategyStyleLabel',
         'strategyStyleDefault',
         'strategyStyleAggressive',
