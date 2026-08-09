@@ -57,3 +57,18 @@ export function syncMarketCatalog () {
     method: 'post'
   })
 }
+
+export function getSystemLogs (params = {}) {
+  return request({
+    url: '/api/settings/system/logs',
+    method: 'get',
+    params
+  })
+}
+
+export function getSystemDbConfig () {
+  return request({
+    url: '/api/settings/system/db-config',
+    method: 'get'
+  })
+}

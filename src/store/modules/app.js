@@ -20,7 +20,7 @@ const app = {
   state: {
     sideCollapsed: false,
     isMobile: false,
-    theme: storage.get(TOGGLE_NAV_THEME, 'realdark'), // 从 localStorage 读取主题，默认 'realdark'
+    theme: storage.get(TOGGLE_NAV_THEME, 'auto'), // 默认跟随系统 (auto=黑/白, 可手动 light/dark)
     layout: '',
     contentWidth: '',
     fixedHeader: false,

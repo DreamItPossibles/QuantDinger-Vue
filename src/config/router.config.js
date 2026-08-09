@@ -140,6 +140,20 @@ export const asyncRouterMap = [
         name: 'Settings',
         component: () => import('@/views/settings'),
         meta: { title: 'menu.settings', keepAlive: false, icon: 'setting', permission: ['admin'] }
+      },
+      // System logs page (persisted logs from the DB).
+      {
+        path: '/system-logs',
+        name: 'SystemLogs',
+        component: () => import('@/views/system-logs'),
+        meta: { title: 'menu.systemLogs', keepAlive: false, icon: 'file-text', permission: ['admin'] }
+      },
+      // System config page (DB-backed configuration).
+      {
+        path: '/system-config',
+        name: 'SystemConfig',
+        component: () => import('@/views/system-config'),
+        meta: { title: 'menu.systemConfig', keepAlive: false, icon: 'setting', permission: ['admin'] }
       }
     ]
   },

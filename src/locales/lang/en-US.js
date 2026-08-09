@@ -1038,6 +1038,8 @@ const locale = {
   "menu.dashboard.portfolio": "Portfolio",
   "menu.dashboard.globalMarket": "Global Market",
   "menu.settings": "Settings",
+  "menu.systemLogs": "System Logs",
+  "menu.systemConfig": "System Config",
   "menu.dashboard.aiTradingAssistant": "AI Trading Assistant",
   "menu.dashboard.signalRobot": "Signal Robot",
   "menu.dashboard.monitor": "Monitor",

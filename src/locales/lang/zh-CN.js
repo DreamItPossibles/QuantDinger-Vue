@@ -4030,6 +4030,8 @@ const locale = {
   "menu.result.fail": "失败页",
   "menu.result.success": "成功页",
   "menu.settings": "系统设置",
+  "menu.systemLogs": "系统日志",
+  "menu.systemConfig": "系统配置",
   "menu.userManage": "用户管理",
   "menu.wallet": "我的钱包",
   "menu.welcome": "欢迎",

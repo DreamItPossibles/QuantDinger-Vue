@@ -39,6 +39,18 @@
                 </div>
               </div>
             </a-tooltip>
+
+            <a-tooltip>
+              <template slot="title">
+                {{ $t('app.setting.pagestyle.auto') || '跟随系统' }}
+              </template>
+              <div class="setting-drawer-index-item" @click="handleMenuTheme('auto')">
+                <a-icon type="sync" style="font-size: 22px; line-height: 60px;" />
+                <div class="setting-drawer-index-selectIcon" v-if="currentNavTheme === 'auto'">
+                  <a-icon type="check"/>
+                </div>
+              </div>
+            </a-tooltip>
           </div>
         </div>
 
