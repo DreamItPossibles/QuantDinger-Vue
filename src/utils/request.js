@@ -35,15 +35,15 @@ function getToken () {
 
 const request = axios.create({
   baseURL: '/',
-  timeout: 30000, // Default request timeout 30s (can be overridden per request)
+  timeout: 300000, // Default request timeout 5min (can be overridden per request)
   withCredentials: true // 允许携带 cookies
 })
 
 // Extended timeout for long-running AI analysis APIs
-export const ANALYSIS_TIMEOUT = 180000 // 3 minutes for AI analysis
+export const ANALYSIS_TIMEOUT = 300000 // 5 minutes for AI analysis
 
 // Extended timeout for AI code/bot generation (LLM + auto-fix loop)
-export const AI_GENERATE_TIMEOUT = 180000 // 3 minutes for AI generation
+export const AI_GENERATE_TIMEOUT = 300000 // 5 minutes for AI generation
 
 // Extended timeout for AI Copilot chat. Local Ollama models can need several
 // minutes before returning a full non-streaming response.
