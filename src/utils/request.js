@@ -5,6 +5,7 @@ import notification from 'ant-design-vue/es/notification'
 import { VueAxios } from './axios'
 import { ACCESS_TOKEN, USER_INFO, USER_ROLES } from '@/store/mutation-types'
 import i18n from '@/locales'
+import { reportRequestError } from './frontend-log'
 
 const PHPSESSID_KEY = 'PHPSESSID'
 // Locale storage key used by vue-i18n (see src/locales/index.js)
@@ -169,6 +170,10 @@ function attachBackendErrorMessage (error) {
 
 const errorHandler = (error) => {
   attachBackendErrorMessage(error)
+  // 上报失败请求到系统日志（source=frontend）
+  try {
+    reportRequestError(error.config, error, error.durationMs || null)
+  } catch (e) { /* 忽略 */ }
   if (error.response) {
     const data = error.response.data
     if (error.response.status === 403) {

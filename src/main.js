@@ -14,8 +14,10 @@ import './utils/filter' // global filter
 import './global.less' // global style
 import './qd-layout-dark-override.less'
 import './mobile-responsive.less'
+import { installFrontendLogging } from './utils/frontend-log' // 前端日志入库
 
 Vue.config.productionTip = false
+installFrontendLogging()
 
 // Suppress noisy ResizeObserver loop errors (harmless in most cases on responsive layouts)
 if (typeof window !== 'undefined') {

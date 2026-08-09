@@ -582,6 +582,7 @@ export default {
       eventModalVisible: false,
       watchlist: [],
       watchlistPrices: {},
+      symbolMerging: false,
       addWatchModalVisible: false,
       addingWatch: false,
       addWatchMarket: 'Crypto',
@@ -1371,10 +1372,34 @@ export default {
       this.composerHeight = this.composerMinHeight
       this.$nextTick(this.resizeComposer)
     },
-    seedSymbolOptions () {
+    async seedSymbolOptions () {
       this.symbolOptions = (this.watchlist || []).filter(item => !this.context.market || item.market === this.context.market)
       if (!this.symbolOptions.length && this.context.symbol) {
         this.symbolOptions = [{ market: this.context.market, symbol: this.context.symbol }]
+      }
+      this.mergeCnHotSymbols()
+    },
+    async mergeCnHotSymbols () {
+      // 固定五大股指 + 当日热门股，让标的下拉动态展示 A 股内容。
+      if (this.context.market && this.context.market !== 'CNStock') return
+      if (this.symbolMerging) return
+      this.symbolMerging = true
+      try {
+        const res = await getHotSymbols({ market: 'CNStock', limit: 12 })
+        const data = res.data || {}
+        const list = Array.isArray(data) ? data : (data.results || data.symbols || data.items || [])
+        const hot = list.map(x => this.normalizeSymbolOption(x)).filter(Boolean)
+        if (!hot.length) return
+        const seen = new Set((this.symbolOptions || []).map(o => this.symbolOptionValue(o)))
+        const merged = hot.filter(o => {
+          const v = this.symbolOptionValue(o)
+          if (seen.has(v)) return false
+          seen.add(v)
+          return true
+        })
+        this.symbolOptions = merged.concat(this.symbolOptions || [])
+      } catch (_) { /* 热门标的为尽力而为，失败不影响 watchlist */ } finally {
+        this.symbolMerging = false
       }
     },
     applyDefaultWatchSymbol () {
