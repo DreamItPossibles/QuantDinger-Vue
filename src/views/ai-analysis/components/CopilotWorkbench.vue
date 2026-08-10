@@ -108,6 +108,9 @@
             <div v-if="msg.streamWarning" class="stream-warning">
               <a-icon type="warning" />
               <span>{{ msg.streamWarning }}</span>
+              <button v-if="msg.truncated" type="button" class="stream-warning-btn" @click="continueIncompleteMessage(msg)">
+                <a-icon type="sync" /> {{ text.continueGenerate }}
+              </button>
             </div>
             <div v-if="msg.meta" class="message-meta">{{ msg.meta }}</div>
             <div v-if="agentUsageItems(msg).length" class="agent-usage">
@@ -761,6 +764,7 @@ export default {
         streamInterrupted: t('streamInterrupted', this.isZh ? '连接中断，已保留当前内容，请重试。' : 'The connection was interrupted. The current response was kept; please retry.'),
         streamIncomplete: t('streamIncomplete', this.isZh ? '响应未正常结束，请重试。' : 'The response did not finish correctly. Please retry.'),
         outputLimit: t('outputLimit', this.isZh ? '回答已达到输出上限，当前内容可能不完整。' : 'The response reached the output limit and may be incomplete.'),
+        continueGenerate: t('continueGenerate', this.isZh ? '继续生成剩余部分' : 'Continue generating'),
         thinking: t('thinking', 'Thinking...'),
         selectSymbolFirst: t('selectSymbolFirst', 'Choose a symbol to analyze before running this tool.'),
         uploadImage: t('uploadImage', 'Upload image'),
@@ -2449,7 +2453,7 @@ export default {
         workflow: this.pendingAgentTask.workflow
       }
     },
-    buildChatContext (message = '', resolvedSymbol = null) {
+    buildChatContext (message = '', resolvedSymbol = null, extra = {}) {
       const recent = (this.messages || [])
         .filter(msg => msg && msg.content)
         .slice(-8)
@@ -2508,7 +2512,8 @@ export default {
           'Users may not manually choose a data source. Infer the market and symbol from natural language first, then use system data/watchlist/market context. If live data is missing, state the gap and still provide actionable next steps instead of stopping.'
         ),
         strategy_format: this.strategyFormat || 'auto',
-        copilot_recent_messages: recent
+        copilot_recent_messages: recent,
+        ...extra
       }
     },
     async handleQuickPrompt (item) {
@@ -3750,6 +3755,51 @@ export default {
         throw error
       }
     },
+    async continueIncompleteMessage (assistantMsg) {
+      if (!assistantMsg || assistantMsg.continuing || this.sending) return
+      assistantMsg.continuing = true
+      // 找回对应的原始用户请求，作为续写上下文
+      const idx = this.messages.indexOf(assistantMsg)
+      let originalRequest = ''
+      for (let i = idx - 1; i >= 0; i--) {
+        if (this.messages[i] && this.messages[i].role === 'user') {
+          originalRequest = this.messages[i].content || ''
+          break
+        }
+      }
+      const partial = String(assistantMsg.content || '')
+      assistantMsg.streamWarning = ''
+      assistantMsg.truncated = false
+      assistantMsg.isThinking = true
+      this.scrollToBottom()
+      const continuation = [
+        '[CONTINUE OUTPUT]',
+        '上一条回答在输出中途被截断（达到输出上限）。请从断点处继续，把剩余内容完整输出，尤其要把完整可运行的策略代码输出到结束；不要重复已经输出的部分。',
+        '',
+        '原始请求：',
+        originalRequest || '(无)',
+        '',
+        '已经输出的部分（请从断点后继续）：',
+        partial
+      ].join('\n')
+      try {
+        await this.sendMessageStream(
+          continuation,
+          [],
+          assistantMsg,
+          this.buildChatContext(continuation, undefined, { continuation_of: partial })
+        )
+        this.sending = false
+      } catch (e) {
+        this.sending = false
+        if (!e || !(e.streamAccepted || e.streamHasContent)) {
+          this.$message.error((e && e.message) || this.text.chatUnavailable)
+        }
+      } finally {
+        assistantMsg.continuing = false
+        this.scrollToBottom()
+      }
+    },
     handleStreamEvent (rawEvent, assistantMsg) {
       const lines = String(rawEvent || '').split(/\r?\n/)
       const eventName = (lines.find(line => line.startsWith('event:')) || '').replace(/^event:\s*/, '').trim()
@@ -3773,9 +3823,11 @@ export default {
         assistantMsg.content = payload.text || assistantMsg.content
         assistantMsg.streamWarning = ''
       } else if (eventName === 'warning') {
-        assistantMsg.streamWarning = payload.code === 'output_limit'
+        const isLimit = payload.code === 'output_limit'
+        assistantMsg.streamWarning = isLimit
           ? this.text.outputLimit
           : (payload.msg || this.text.streamIncomplete)
+        if (isLimit) assistantMsg.truncated = true
       } else if (eventName === 'done') {
         this.sessionId = payload.session_id || this.sessionId
         if (payload.message_id) this.$set ? this.$set(assistantMsg, 'id', payload.message_id) : (assistantMsg.id = payload.message_id)
