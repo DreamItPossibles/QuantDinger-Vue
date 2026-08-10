@@ -29,7 +29,7 @@ const app = {
     color: storage.get(TOGGLE_COLOR, '#52C41A'), // 从 localStorage 读取主题色，默认 '#52C41A'
     weak: false,
     multiTab: true,
-    lang: 'en-US',
+    lang: 'zh-CN', // 默认中文简体
     _antLocale: {}
   },
   mutations: {

@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueI18n from 'vue-i18n'
 import storage from 'store'
 import moment from 'moment'
+import zhCN from './lang/zh-CN'
 import enUS from './lang/en-US'
 import copilotOverrides from './copilot-overrides'
 import profileSecurityMessages from './lang/profile-security'
@@ -14,11 +15,11 @@ import generatedLocaleOverrides from './generated-locale-overrides'
 
 Vue.use(VueI18n)
 
-export const defaultLang = 'en-US'
+export const defaultLang = 'zh-CN'
 
 const messages = {
   [defaultLang]: {
-    ...enUS,
+    ...zhCN,
     ...(copilotOverrides[defaultLang] || {}),
     ...(profileSecurityMessages[defaultLang] || {}),
     ...(brokerAccountWorkspaceMessages[defaultLang] || {}),
@@ -27,6 +28,17 @@ const messages = {
     ...(robotBuilderMessages[defaultLang] || {}),
     ...(strategyTradeRecordMessages[defaultLang] || {}),
     ...(generatedLocaleOverrides[defaultLang] || {})
+  },
+  'en-US': {
+    ...enUS,
+    ...(copilotOverrides['en-US'] || {}),
+    ...(profileSecurityMessages['en-US'] || {}),
+    ...(brokerAccountWorkspaceMessages['en-US'] || {}),
+    ...(strategyV2Messages['en-US'] || {}),
+    ...(strategyLiveRiskMessages['en-US'] || {}),
+    ...(robotBuilderMessages['en-US'] || {}),
+    ...(strategyTradeRecordMessages['en-US'] || {}),
+    ...(generatedLocaleOverrides['en-US'] || {})
   }
 }
 

@@ -129,6 +129,23 @@
                 <a-icon type="copy" /> {{ text.copyCode }}
               </button>
             </div>
+            <div v-if="msg.role === 'user'" class="message-send-status" :class="'send-status--' + (msg.sendStatus || 'sent')">
+              <a-icon
+                v-if="msg.sendStatus === 'sending'"
+                type="loading"
+                class="send-status-spin"
+              />
+              <a-icon
+                v-else-if="msg.sendStatus === 'error'"
+                type="close-circle"
+                class="send-status-error"
+              />
+              <a-icon
+                v-else
+                type="check-circle"
+                class="send-status-ok"
+              />
+            </div>
             <div v-if="formatMessageTime(msg)" class="message-time">{{ formatMessageTime(msg) }}</div>
           </div>
         </article>
@@ -176,21 +193,21 @@
                 </div>
               </a-select-option>
             </a-select>
-            <a-select
-              v-model="strategyFormat"
-              size="large"
-              style="width: 150px; margin-left: 8px"
-              dropdown-class-name="copilot-format-dropdown"
-              :title="text.strategyFormatLabel"
-            >
-              <a-select-option value="auto">{{ text.strategyFormatAuto }}</a-select-option>
-              <a-select-option value="qmt">{{ text.strategyFormatQmt }}</a-select-option>
-              <a-select-option value="v2">{{ text.strategyFormatV2 }}</a-select-option>
-              <a-select-option value="joinquant">{{ text.strategyFormatJoinquant }}</a-select-option>
-              <a-select-option value="ricequant">{{ text.strategyFormatRicequant }}</a-select-option>
-              <a-select-option value="backtrader">{{ text.strategyFormatBacktrader }}</a-select-option>
-            </a-select>
           </div>
+          <a-select
+            class="composer-format-picker"
+            v-model="strategyFormat"
+            size="large"
+            dropdown-class-name="copilot-format-dropdown"
+            :title="text.strategyFormatLabel"
+          >
+            <a-select-option value="auto">{{ text.strategyFormatAuto }}</a-select-option>
+            <a-select-option value="qmt">{{ text.strategyFormatQmt }}</a-select-option>
+            <a-select-option value="v2">{{ text.strategyFormatV2 }}</a-select-option>
+            <a-select-option value="joinquant">{{ text.strategyFormatJoinquant }}</a-select-option>
+            <a-select-option value="ricequant">{{ text.strategyFormatRicequant }}</a-select-option>
+            <a-select-option value="backtrader">{{ text.strategyFormatBacktrader }}</a-select-option>
+          </a-select>
         </div>
         <div v-if="strategyComposerGuide" class="composer-coach">
           <span class="composer-coach-icon"><a-icon :type="strategyComposerGuide.icon" /></span>
@@ -2483,6 +2500,7 @@ export default {
           'aiAssetAnalysis.copilot.dataSourcePolicy',
           'Users may not manually choose a data source. Infer the market and symbol from natural language first, then use system data/watchlist/market context. If live data is missing, state the gap and still provide actionable next steps instead of stopping.'
         ),
+        strategy_format: this.strategyFormat || 'auto',
         copilot_recent_messages: recent
       }
     },
@@ -3046,8 +3064,11 @@ export default {
           promptText('ruleLightChartLayers', '- When layers are truly needed, they must look like lightweight analysis annotations, not blocking panels: short text, transparent fills, dashed borders when useful, and labels near the right edge or outside dense candles.')
         )
       } else if (targetType === 'script') {
-        const wantV2 = !this.strategyFormat || this.strategyFormat === 'v2' || this.strategyFormat === 'auto'
-        if (wantV2) {
+        // Only inject Strategy API V2 hard rules when the user explicitly picked
+        // the platform V2 format. "auto" defers to the backend default (A-share
+        // requests default to 东莞证券 QMT), so we must not leak V2-only wording
+        // into the prompt that would override that default.
+        if (this.strategyFormat === 'v2') {
           hardRules.splice(
             6,
             0,
@@ -3324,7 +3345,8 @@ export default {
         role: 'user',
         content: content || this.i18nText('aiAssetAnalysis.copilot.imageUploadedFallback', '[image uploaded]'),
         attachments,
-        created_at: createdAt
+        created_at: createdAt,
+        sendStatus: 'sending' // sending -> sent (success animation) / error
       }
       this.messages.push(userMsg)
       this.draft = ''
@@ -3337,6 +3359,7 @@ export default {
         for (const message of newMessages) {
           if (!message.id) await this.persistCopilotMessage(message, message.role === 'user' ? 'monitor_user' : 'monitor_agent')
         }
+        userMsg.sendStatus = 'sent'
         this.sending = false
         this.scrollToBottom()
         return
@@ -3348,15 +3371,18 @@ export default {
         const target = this.normalizeSymbolOption(contextLock || this.pendingAgentTask.target || this.context)
         if (target && target.symbol) {
           await this.executeProfessionalAnalysis(userMsg, target)
+          userMsg.sendStatus = 'sent'
           return
         }
       }
       if (await this.handlePendingStrategyAgentMessage(content, userMsg, contextLock)) {
+        userMsg.sendStatus = 'sent'
         this.sending = false
         this.scrollToBottom()
         return
       }
       if (await this.handleBackendAgentIntent(content, attachments, contextLock)) {
+        userMsg.sendStatus = 'sent'
         this.sending = false
         this.scrollToBottom()
         return
@@ -3373,6 +3399,7 @@ export default {
           meta: guide.meta
         })
         await this.persistCopilotMessage(this.messages[this.messages.length - 1], 'preflight_guide')
+        userMsg.sendStatus = 'sent'
         this.sending = false
         this.scrollToBottom()
         return
@@ -3402,6 +3429,7 @@ export default {
       if (!preferJsonResponse) {
         try {
           await this.sendMessageStream(content, attachments, assistantMsg, chatContext)
+          userMsg.sendStatus = 'sent'
           this.sending = false
           this.scrollToBottom()
           return
@@ -3415,6 +3443,7 @@ export default {
             } else {
               assistantMsg.content = streamError.message || this.text.chatUnavailable
             }
+            userMsg.sendStatus = 'sent'
             this.sending = false
             this.scrollToBottom()
             return
@@ -3448,6 +3477,7 @@ export default {
         this.appendAgentNextActions(fallbackAssistant)
         this.loadSessions()
       } catch (e) {
+        userMsg.sendStatus = 'error'
         const guide = this.buildSetupGuide(e, chatContext)
         const setupMsg = this.replacePendingAssistant(assistantMsg, {
           localId: `local-${localId++}`,
@@ -3459,6 +3489,7 @@ export default {
         })
         await this.persistCopilotMessage(setupMsg, 'setup_guide')
       } finally {
+        if (userMsg.sendStatus === 'sending') userMsg.sendStatus = 'sent'
         this.sending = false
         this.scrollToBottom()
       }
@@ -4529,7 +4560,7 @@ export default {
 
 .context-bar {
   display: grid;
-  grid-template-columns: max-content minmax(220px, 420px);
+  grid-template-columns: max-content minmax(220px, 1fr) max-content;
   gap: 10px;
   align-items: center;
   justify-content: start;
@@ -4578,6 +4609,19 @@ export default {
 
 .hero-symbol-picker {
   min-width: 0;
+}
+
+.composer-format-picker {
+  width: 160px;
+  min-width: 0;
+}
+
+.composer-format-picker ::v-deep .ant-select-selection {
+  height: 32px;
+}
+
+.composer-format-picker ::v-deep .ant-select-selection__rendered {
+  line-height: 30px;
 }
 
 .composer-actions ::v-deep .ant-btn,
@@ -5133,6 +5177,44 @@ export default {
   font-size: 11px;
   line-height: 1;
   text-align: right;
+}
+
+.message-send-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+  margin-left: 6px;
+  font-size: 12px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.send-status-spin {
+  color: var(--qd-accent);
+  animation: qd-send-spin 0.9s linear infinite;
+}
+
+.send-status-ok {
+  color: #52c41a;
+  opacity: 0;
+  transform: scale(0.4);
+  animation: qd-send-pop 0.35s ease-out forwards;
+}
+
+.send-status-error {
+  color: #ff4d4f;
+}
+
+@keyframes qd-send-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes qd-send-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.25); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .message.assistant .message-time {
