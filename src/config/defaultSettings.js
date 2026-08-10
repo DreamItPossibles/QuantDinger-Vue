@@ -5,7 +5,7 @@ const BUILD_APP_VERSION = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.
 export default {
   /** Web UI release label (footer, docs cross-reference). */
   appVersion: BUILD_APP_VERSION,
-  navTheme: 'realdark', // theme for nav menu
+  navTheme: 'auto', // theme for nav menu: auto=跟随系统, 可手动 light/dark/realdark
   primaryColor: '#52C41A', // primary color of ant design
   layout: 'topmenu', // nav menu position: `sidemenu` or `topmenu`
   contentWidth: 'Fluid', // layout of content: `Fluid` or `Fixed`, only works when layout is topmenu

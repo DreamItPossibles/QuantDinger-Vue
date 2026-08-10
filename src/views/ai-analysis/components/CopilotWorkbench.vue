@@ -821,7 +821,7 @@ export default {
       }
     },
     quickPrompts () {
-      const symbol = this.context.symbol || this.text.currentSymbol
+      const symbol = this.symbolForPrompt()
       const prompt = (key, fallback) => this.localizedQuickPrompt(key, fallback, { symbol })
       return [
         { key: 'diagnose', action: 'analysis', icon: 'line-chart', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.market_diagnosis.label', 'Diagnose symbol'), prompt: prompt('diagnose', 'Diagnose {symbol}: trend, momentum, support/resistance, liquidity, and risk.') },
@@ -831,7 +831,7 @@ export default {
       ]
     },
     systemQuickTasks () {
-      const symbol = this.context.symbol || this.text.currentSymbol
+      const symbol = this.symbolForPrompt()
       const task = (key, action, icon, tone, labelKey, descKey, promptKey, promptFallback) => ({
         key,
         action,
@@ -870,7 +870,7 @@ export default {
       }
     },
     registeredQuickTasks () {
-      const symbol = this.context.symbol || this.text.currentSymbol
+      const symbol = this.symbolForPrompt()
       const registry = Array.isArray(this.skillRegistry) ? this.skillRegistry : []
       if (!registry.length) return this.systemQuickTasks
 
@@ -2155,7 +2155,7 @@ export default {
       }
     },
     buildMonitorQuestion (target) {
-      const label = target && target.symbol ? (target.market + ':' + target.symbol) : this.i18nText('aiAssetAnalysis.copilot.eventPreview.symbolFallback', 'current symbol')
+      const label = target && target.symbol ? this.humanSymbolLabel(target) : this.i18nText('aiAssetAnalysis.copilot.eventPreview.symbolFallback', 'current symbol')
       return this.i18nText('aiAssetAnalysis.copilot.monitorQuestion', [
         'Sure. I will prepare an AI scheduled analysis task for **{label}**.',
         '',
@@ -2180,7 +2180,7 @@ export default {
         '',
         'This task will periodically run the standard AI symbol diagnosis.'
       ].join('\n'), {
-        symbol: target.market + ':' + target.symbol,
+        symbol: this.humanSymbolLabel(target) || (target.market + ':' + target.symbol),
         interval: this.formatIntervalText(payload.interval_min),
         notification: channels.length ? channels.map(channel => this.monitorChannelLabel(channel)).join(', ') : this.i18nText('aiAssetAnalysis.copilot.monitorNoNotify', 'record only')
       })
@@ -2786,6 +2786,12 @@ export default {
       const code = market && symbol ? `${market}:${symbol}` : (symbol || market)
       if (name && name !== symbol) return `${name} (${symbol || code})`
       return code
+    },
+    symbolForPrompt () {
+      // 快速 prompt 里 {symbol} 优先用中文股票名，提升可读性
+      const target = this.normalizeSymbolOption(this.context)
+      if (target && target.symbol) return this.humanSymbolLabel(target)
+      return this.context.symbol || this.text.currentSymbol
     },
     buildAnalysisPrompt (target) {
       const symbol = target && target.symbol

@@ -214,6 +214,7 @@
 
 <script>
 /* global APP_VERSION */
+import storage from 'store'
 import { updateTheme } from '@/components/SettingDrawer/settingConfig'
 import { i18nRender } from '@/locales'
 import { mapState } from 'vuex'
@@ -302,9 +303,10 @@ export default {
       return this.buildTopMenuGroups(children)
     },
     proLayoutSettings () {
-      const theme = this.settings.theme === 'realdark'
+      const resolved = this.resolveTheme(this.settings.theme)
+      const theme = resolved === 'realdark' || resolved === 'dark'
         ? 'dark'
-        : (this.settings.theme === 'dark' ? 'dark' : 'light')
+        : 'light'
       return {
         ...this.settings,
         theme
@@ -327,8 +329,8 @@ export default {
       return (this.brandConfig && this.brandConfig.app_version) || defaultSettings.appVersion || buildVersion
     },
     currentLogo () {
-      const theme = this.settings.theme
-      const isDark = theme === 'dark' || theme === 'realdark'
+      const resolved = this.resolveTheme(this.settings.theme)
+      const isDark = resolved === 'dark' || resolved === 'realdark'
       const remote = isDark
         ? (this.brandConfig.logos && this.brandConfig.logos.dark)
         : (this.brandConfig.logos && this.brandConfig.logos.light)
@@ -381,15 +383,7 @@ export default {
     })
     this.$watch('$store.state.app.theme', (val) => {
       this.settings.theme = val
-      if (val === 'dark' || val === 'realdark') {
-        document.body.classList.add('dark')
-        document.body.classList.toggle('realdark', val === 'realdark')
-        document.body.classList.remove('light')
-      } else {
-        document.body.classList.remove('dark')
-        document.body.classList.remove('realdark')
-        document.body.classList.add('light')
-      }
+      this.applyBodyTheme(val)
     }, { immediate: true })
     this.$watch('$store.state.app.color', (val) => {
       if (val) {
@@ -404,15 +398,7 @@ export default {
       }
     }, { immediate: true })
     this.$watch('settings.theme', (val) => {
-      if (val === 'dark' || val === 'realdark') {
-        document.body.classList.add('dark')
-        document.body.classList.toggle('realdark', val === 'realdark')
-        document.body.classList.remove('light')
-      } else {
-        document.body.classList.remove('dark')
-        document.body.classList.remove('realdark')
-        document.body.classList.add('light')
-      }
+      this.applyBodyTheme(val)
     }, { immediate: true })
   },
   watch: {
@@ -856,10 +842,32 @@ export default {
         }, 300) // 等待 drawer 动画完成
       })
     },
+    resolveTheme (theme) {
+      // auto = 跟随系统黑白
+      if (theme === 'auto') {
+        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'realdark' : 'light'
+      }
+      return theme
+    },
+    applyBodyTheme (val) {
+      const resolved = this.resolveTheme(val)
+      if (resolved === 'dark' || resolved === 'realdark') {
+        document.body.classList.add('dark')
+        document.body.classList.toggle('realdark', resolved === 'realdark')
+        document.body.classList.remove('light')
+      } else {
+        document.body.classList.remove('dark')
+        document.body.classList.remove('realdark')
+        document.body.classList.add('light')
+      }
+    },
     handleSettingChange ({ type, value }) {
       type && (this.settings[type] = value)
       switch (type) {
         case 'theme':
+          // 标记"用户显式选择过主题"，bootstrap 据此决定是否信任已存主题
+          // （历史版本自动写入的 realdark 不会覆盖默认跟随系统）。
+          storage.set('qd_nav_theme_explicit', '1')
           this.$store.commit(TOGGLE_NAV_THEME, value)
           break
         case 'primaryColor':

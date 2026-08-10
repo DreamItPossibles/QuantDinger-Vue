@@ -21,9 +21,14 @@ export default function Initializer () {
     ? defaultSettings.layout
     : savedLayout
   const savedTheme = storage.get(TOGGLE_NAV_THEME)
+  const savedThemeExplicit = storage.get('qd_nav_theme_explicit') === '1'
   const savedColor = storage.get(TOGGLE_COLOR)
-  const validThemes = ['light', 'dark', 'realdark']
-  const nextTheme = validThemes.includes(savedTheme) ? savedTheme : defaultSettings.navTheme
+  const validThemes = ['auto', 'light', 'dark', 'realdark']
+  // 只信任"用户显式选择"过的主题；历史版本首次启动会把默认 realdark 写进
+  // localStorage，若不加显式标记，老用户会一直被卡在深色主题无法跟随系统。
+  const nextTheme = (savedThemeExplicit && validThemes.includes(savedTheme))
+    ? savedTheme
+    : defaultSettings.navTheme
   const nextColor = !savedColor || String(savedColor).toUpperCase() === legacyDefaultColor ? defaultSettings.primaryColor : savedColor
   store.commit(TOGGLE_LAYOUT, nextLayout)
   store.commit(TOGGLE_FIXED_HEADER, storage.get(TOGGLE_FIXED_HEADER, defaultSettings.fixedHeader))
