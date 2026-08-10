@@ -176,6 +176,20 @@
                 </div>
               </a-select-option>
             </a-select>
+            <a-select
+              v-model="strategyFormat"
+              size="large"
+              style="width: 150px; margin-left: 8px"
+              dropdown-class-name="copilot-format-dropdown"
+              :title="text.strategyFormatLabel"
+            >
+              <a-select-option value="auto">{{ text.strategyFormatAuto }}</a-select-option>
+              <a-select-option value="qmt">{{ text.strategyFormatQmt }}</a-select-option>
+              <a-select-option value="v2">{{ text.strategyFormatV2 }}</a-select-option>
+              <a-select-option value="joinquant">{{ text.strategyFormatJoinquant }}</a-select-option>
+              <a-select-option value="ricequant">{{ text.strategyFormatRicequant }}</a-select-option>
+              <a-select-option value="backtrader">{{ text.strategyFormatBacktrader }}</a-select-option>
+            </a-select>
           </div>
         </div>
         <div v-if="strategyComposerGuide" class="composer-coach">
@@ -598,6 +612,7 @@ export default {
       strategyFlowVisible: false,
       selectedStrategyTarget: 'indicator',
       generatingStrategy: false,
+      strategyFormat: 'auto',
       pendingAgentTask: null,
       monitorSetupDraft: null,
       agentPreflight: null,
@@ -734,6 +749,13 @@ export default {
         uploadImage: t('uploadImage', 'Upload image'),
         quickTools: t('quickTools', 'Quick tools'),
         hideQuickTools: t('hideQuickTools', 'Hide quick tools'),
+        strategyFormatLabel: t('strategyFormatLabel', this.isZh ? '策略输出格式' : 'Strategy format'),
+        strategyFormatAuto: t('strategyFormatAuto', this.isZh ? '自动识别' : 'Auto'),
+        strategyFormatQmt: t('strategyFormatQmt', this.isZh ? '东莞证券 QMT' : 'Dongguan QMT'),
+        strategyFormatV2: t('strategyFormatV2', this.isZh ? '平台 Strategy API V2' : 'Platform V2'),
+        strategyFormatJoinquant: t('strategyFormatJoinquant', this.isZh ? '聚宽 JoinQuant' : 'JoinQuant'),
+        strategyFormatRicequant: t('strategyFormatRicequant', this.isZh ? '米筐 RiceQuant' : 'RiceQuant'),
+        strategyFormatBacktrader: t('strategyFormatBacktrader', this.isZh ? 'Backtrader' : 'Backtrader'),
         usedThisTurn: t('usedThisTurn', 'Used this turn'),
         imageAttachment: t('imageAttachment', 'Image attachment'),
         copyCode: t('copyCode', 'Copy code'),
@@ -3024,14 +3046,17 @@ export default {
           promptText('ruleLightChartLayers', '- When layers are truly needed, they must look like lightweight analysis annotations, not blocking panels: short text, transparent fills, dashed borders when useful, and labels near the right edge or outside dense candles.')
         )
       } else if (targetType === 'script') {
-        hardRules.splice(
-          6,
-          0,
-          promptText('ruleScriptDraft', '- Trading Script output must be a Python Strategy API V2 draft for the QuantDinger Trading Script editor.'),
-          promptText('ruleScriptOwnership', '- Source code owns the canonical instrument, market type, subscription frequency, direction, sizing, entries, exits, risk, and schedules. The run panel owns only initial capital, date range, and permitted Crypto @swap leverage.'),
-          promptText('ruleScriptApis', '- Use data.current(...) for current prices, position.amount/avg_cost for positions, and global order/schedule helpers. Never use get_current_data, position.quantity/cost_basis, or context.run_daily.'),
-          promptText('ruleInitializeParams', '- Never read context.params in initialize(context); read declared # @param values only inside executable handlers or callbacks.')
-        )
+        const wantV2 = !this.strategyFormat || this.strategyFormat === 'v2' || this.strategyFormat === 'auto'
+        if (wantV2) {
+          hardRules.splice(
+            6,
+            0,
+            promptText('ruleScriptDraft', '- Trading Script output must be a Python Strategy API V2 draft for the QuantDinger Trading Script editor.'),
+            promptText('ruleScriptOwnership', '- Source code owns the canonical instrument, market type, subscription frequency, direction, sizing, entries, exits, risk, and schedules. The run panel owns only initial capital, date range, and permitted Crypto @swap leverage.'),
+            promptText('ruleScriptApis', '- Use data.current(...) for current prices, position.amount/avg_cost for positions, and global order/schedule helpers. Never use get_current_data, position.quantity/cost_basis, or context.run_daily.'),
+            promptText('ruleInitializeParams', '- Never read context.params in initialize(context); read declared # @param values only inside executable handlers or callbacks.')
+          )
+        }
       } else {
         hardRules.splice(6, 0, promptText('ruleScriptDraft', '- Trading Script output must be a Python Strategy API V2 draft for the QuantDinger Trading Script editor.'))
       }
@@ -3145,7 +3170,8 @@ export default {
         const res = await aiGenerateStrategy({
           prompt: agentPrompt,
           intent: 'generate_code',
-          source: 'copilot_quick_tool'
+          source: 'copilot_quick_tool',
+          format: this.strategyFormat || 'auto'
         })
         const code = this.extractStrategyCode(res)
         if (!code) throw new Error((res && res.msg) || 'AI generation failed')

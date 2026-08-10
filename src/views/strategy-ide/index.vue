@@ -306,6 +306,16 @@
 
         <div class="indicator-convert-style-row">
           <div class="indicator-convert-style-col">
+            <label class="field-label">{{ text.strategyFormatLabel }}</label>
+            <a-select v-model="indicatorConvertFormat" style="width: 100%">
+              <a-select-option value="v2">{{ text.strategyFormatV2 }}</a-select-option>
+              <a-select-option value="qmt">{{ text.strategyFormatQmt }}</a-select-option>
+              <a-select-option value="joinquant">{{ text.strategyFormatJoinquant }}</a-select-option>
+              <a-select-option value="ricequant">{{ text.strategyFormatRicequant }}</a-select-option>
+              <a-select-option value="backtrader">{{ text.strategyFormatBacktrader }}</a-select-option>
+            </a-select>
+          </div>
+          <div class="indicator-convert-style-col">
             <label class="field-label">{{ text.strategyStyleLabel }}</label>
             <a-select
               v-model="indicatorConvertStyle"
@@ -575,6 +585,7 @@ export default {
       indicatorConvertError: '',
       indicatorConvertStyle: '',
       indicatorConvertTheme: '',
+      indicatorConvertFormat: 'v2',
       runConfig: {
         market_category: 'Crypto',
         exchange_id: 'binance',
@@ -741,6 +752,12 @@ export default {
         'indicatorConvertFailed',
         'indicatorConvertSuccess',
         'autoBacktestTitle',
+        'strategyFormatLabel',
+        'strategyFormatV2',
+        'strategyFormatQmt',
+        'strategyFormatJoinquant',
+        'strategyFormatRicequant',
+        'strategyFormatBacktrader',
         'strategyStyleLabel',
         'strategyStyleDefault',
         'strategyStyleAggressive',
@@ -1802,7 +1819,8 @@ export default {
         const res = await aiGenerateStrategy({
           prompt: this.buildIndicatorConversionPrompt(),
           strategy_style: this.indicatorConvertStyle || undefined,
-          strategy_theme: this.indicatorConvertTheme || undefined
+          strategy_theme: this.indicatorConvertTheme || undefined,
+          format: this.indicatorConvertFormat || 'v2'
         })
         const code = this.extractAiGeneratedCode(res)
         if (!code) throw new Error((res && res.msg) || this.text.indicatorConvertFailed)
