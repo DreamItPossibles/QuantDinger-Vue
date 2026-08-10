@@ -1008,7 +1008,7 @@ export default {
     currentContextLabel () {
       const target = this.normalizeSymbolOption(this.context)
       if (!target || !target.symbol) return this.text.contextAutoInfer
-      return `${target.market}:${target.symbol}`
+      return this.humanSymbolLabel(target)
     },
     selectableSymbols () {
       const map = new Map()
@@ -1038,7 +1038,11 @@ export default {
     taskSymbolLabel () {
       const target = this.taskTarget || this.normalizeSymbolOption(this.context)
       if (!target) return '--'
-      return `${this.marketLabel(target.market)} · ${target.symbol}`
+      const marketLabel = this.marketLabel(target.market)
+      if (target.name && target.name !== target.symbol) {
+        return `${marketLabel} · ${target.name} (${target.symbol})`
+      }
+      return `${marketLabel} · ${target.symbol}`
     }
   },
   mounted () {
@@ -2771,12 +2775,21 @@ export default {
     askAboutReport (reportId) {
       const msg = (this.messages || []).find(item => this.reportId(item) === String(reportId))
       const target = (msg && msg.reportTarget) || this.context
-      const label = target && target.symbol ? `${target.market}:${target.symbol}` : this.i18nText('aiAssetAnalysis.copilot.thisReport', 'this report')
+      const label = target && target.symbol ? this.humanSymbolLabel(target) : this.i18nText('aiAssetAnalysis.copilot.thisReport', 'this report')
       this.usePrompt(this.i18nText('aiAssetAnalysis.copilot.askReportFollowup', 'Based on the diagnosis report for {label}, explain further:', { label }))
+    },
+    humanSymbolLabel (target) {
+      if (!target) return ''
+      const symbol = String(target.symbol || '').trim()
+      const name = String(target.name || '').trim()
+      const market = String(target.market || '').trim()
+      const code = market && symbol ? `${market}:${symbol}` : (symbol || market)
+      if (name && name !== symbol) return `${name} (${symbol || code})`
+      return code
     },
     buildAnalysisPrompt (target) {
       const symbol = target && target.symbol
-        ? `${target.market}:${target.symbol}`
+        ? this.humanSymbolLabel(target)
         : this.i18nText(
           'aiAssetAnalysis.copilot.analysisPromptTargetPlaceholder',
           'the symbol to analyze, for example Crypto:BTC/USDT'
@@ -2796,7 +2809,7 @@ export default {
     buildStrategyPrompt (targetKey, target, seedPrompt = '') {
       const normalizedTargetKey = targetKey === 'indicator' ? 'indicator' : 'script'
       const targetText = target && target.symbol
-        ? `${target.market}:${target.symbol}`
+        ? this.humanSymbolLabel(target)
         : this.i18nText('aiAssetAnalysis.copilot.strategySymbolPlaceholder', '[enter symbol here, e.g. Crypto:BTC/USDT or USStock:AAPL]')
       const promptText = (key, fallback, values = {}) => this.i18nText(`aiAssetAnalysis.copilot.strategyPrompt.${key}`, fallback, values)
       const promptKey = normalizedTargetKey === 'indicator'
@@ -2836,19 +2849,28 @@ export default {
     strategyPromptTarget (target = {}, entities = {}) {
       const market = String(entities.market || target.market || '').trim()
       const rawSymbol = String(entities.symbol || target.symbol || '').trim()
-      if (!rawSymbol) return market
-      if (market.toLowerCase() !== 'crypto') {
-        return /^(?:CNStock|Forex|Future|Futures|USStock):/i.test(rawSymbol)
+      let code
+      if (!rawSymbol) {
+        code = market
+      } else if (market.toLowerCase() !== 'crypto') {
+        code = /^(?:CNStock|Forex|Future|Futures|USStock):/i.test(rawSymbol)
           ? rawSymbol
           : `${market}:${rawSymbol}`
+      } else {
+        const symbol = rawSymbol.replace(/^Crypto:/i, '')
+        if (symbol.includes('@')) {
+          code = `Crypto:${symbol}`
+        } else {
+          const marketType = String(entities.market_type || target.market_type || 'spot').trim().toLowerCase() === 'swap'
+            ? 'swap'
+            : 'spot'
+          const exchangeId = String(entities.exchange_id || target.exchange_id || '').trim().toLowerCase()
+          code = `Crypto:${symbol}@${exchangeId ? `${exchangeId}:` : ''}${marketType}`
+        }
       }
-      const symbol = rawSymbol.replace(/^Crypto:/i, '')
-      if (symbol.includes('@')) return `Crypto:${symbol}`
-      const marketType = String(entities.market_type || target.market_type || 'spot').trim().toLowerCase() === 'swap'
-        ? 'swap'
-        : 'spot'
-      const exchangeId = String(entities.exchange_id || target.exchange_id || '').trim().toLowerCase()
-      return `Crypto:${symbol}@${exchangeId ? `${exchangeId}:` : ''}${marketType}`
+      const name = String(entities.name || target.name || '').trim()
+      if (name && name !== rawSymbol) return `${name} (${code})`
+      return code
     },
     buildExecutableStrategyPrompt (plan, message, target) {
       const entities = plan && plan.entities ? plan.entities : {}
