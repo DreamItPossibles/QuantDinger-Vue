@@ -1012,16 +1012,22 @@ export default {
     },
     selectableSymbols () {
       const map = new Map()
-      ;(this.watchlist || []).forEach(item => {
+      // 同 code 的项若后值缺 name（例如 context 只有 market/symbol），
+      // 保留先值里的中文名，避免下拉框退化成显示 market 代码。
+      const merge = (item) => {
         const normalized = this.normalizeSymbolOption(item)
-        if (normalized) map.set(this.symbolOptionValue(normalized), normalized)
-      })
-      ;(this.symbolOptions || []).forEach(item => {
-        const normalized = this.normalizeSymbolOption(item)
-        if (normalized) map.set(this.symbolOptionValue(normalized), normalized)
-      })
-      const current = this.normalizeSymbolOption(this.context)
-      if (current) map.set(this.symbolOptionValue(current), current)
+        if (!normalized) return
+        const key = this.symbolOptionValue(normalized)
+        const existing = map.get(key)
+        if (existing && existing.name && !normalized.name) {
+          map.set(key, { ...normalized, name: existing.name })
+        } else {
+          map.set(key, normalized)
+        }
+      }
+      ;(this.watchlist || []).forEach(merge)
+      ;(this.symbolOptions || []).forEach(merge)
+      merge(this.context)
       return Array.from(map.values())
     },
     displayCalendarEvents () {
@@ -1088,8 +1094,7 @@ export default {
         symbol: query.symbol || ''
       })
       if (target) {
-        this.context.market = target.market
-        this.context.symbol = target.symbol
+        this.applyContextSymbol(target.market, target.symbol, target.name)
         this.selectedSymbolValue = this.symbolOptionValue(target)
         this.symbolOptions = [target].concat(this.symbolOptions || [])
       }
@@ -1449,8 +1454,7 @@ export default {
       if (this.selectedSymbolValue || this.context.symbol || this.draftContextLock) return
       const first = (this.watchlist || [])[0]
       if (!first) return
-      this.context.market = first.market || this.context.market || firstMarketValue(this.markets)
-      this.context.symbol = first.symbol || ''
+      this.applyContextSymbol(first.market || this.context.market || firstMarketValue(this.markets), first.symbol || '', first.name)
       this.selectedSymbolValue = this.symbolOptionValue(first)
       this.seedSymbolOptions()
     },
@@ -1483,11 +1487,11 @@ export default {
       if (!value) {
         this.context.market = ''
         this.context.symbol = ''
+        this.context.name = ''
         return
       }
       const item = this.selectableSymbols.find(x => this.symbolOptionValue(x) === value) || this.parseSymbolValue(value)
-      this.context.market = item.market || this.context.market
-      this.context.symbol = item.symbol || ''
+      this.applyContextSymbol(item.market, item.symbol, item.name)
       this.selectedSymbolValue = this.symbolOptionValue(item)
       this.seedSymbolOptions()
     },
@@ -1641,8 +1645,7 @@ export default {
     },
     selectWatch (item) {
       const normalized = this.normalizeSymbolOption(item)
-      this.context.market = normalized.market
-      this.context.symbol = normalized.symbol
+      this.applyContextSymbol(normalized.market, normalized.symbol, normalized.name)
       this.selectedSymbolValue = this.symbolOptionValue(normalized)
       this.seedSymbolOptions()
     },
@@ -2793,6 +2796,23 @@ export default {
       if (target && target.symbol) return this.humanSymbolLabel(target)
       return this.context.symbol || this.text.currentSymbol
     },
+    resolveSymbolName (market, symbol) {
+      // 从 watchlist / symbolOptions 反查中文名，供只有代码的 context 补全
+      if (!symbol) return ''
+      const want = this.symbolOptionValue({ market, symbol })
+      const src = [...(this.watchlist || []), ...(this.symbolOptions || [])]
+      const found = src.find(x => {
+        const n = this.normalizeSymbolOption(x)
+        return n && this.symbolOptionValue(n) === want
+      })
+      const normalized = found && this.normalizeSymbolOption(found)
+      return (normalized && normalized.name) || ''
+    },
+    applyContextSymbol (market, symbol, name = '') {
+      this.context.market = market || ''
+      this.context.symbol = symbol || ''
+      this.context.name = name || this.resolveSymbolName(market, symbol)
+    },
     buildAnalysisPrompt (target) {
       const symbol = target && target.symbol
         ? this.humanSymbolLabel(target)
@@ -2967,8 +2987,7 @@ export default {
         })
         return true
       }
-      this.context.market = target.market
-      this.context.symbol = target.symbol
+      this.applyContextSymbol(target.market, target.symbol, target.name)
       this.selectedSymbolValue = this.symbolOptionValue(target)
       this.symbolOptions = [target].concat(this.symbolOptions || [])
       const targetType = this.strategyTargetTypeFromPlan(plan)
@@ -3446,8 +3465,7 @@ export default {
       if (resolvedSymbol) {
         const normalized = this.normalizeSymbolOption(resolvedSymbol)
         if (normalized) {
-          this.context.market = normalized.market
-          this.context.symbol = normalized.symbol
+          this.applyContextSymbol(normalized.market, normalized.symbol, normalized.name)
           this.selectedSymbolValue = this.symbolOptionValue(normalized)
           this.symbolOptions = [normalized].concat(this.symbolOptions || [])
         }
